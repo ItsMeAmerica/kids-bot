@@ -1,0 +1,47 @@
+# Example family settings for kids-bot. Placeholders only: real names and numbers
+# never go in this repo. Put the real file at config/family.local.yaml (git-ignored)
+# or point KIDSBOT_CONFIG at it.
+# Phone numbers use E.164 format: +1 then 10 digits.
+
+timezone: America/Denver
+
+# Test mode: every message meant for a kid goes to the parent instead,
+# labeled "[Test for <Kid>]". Set to false to go live.
+test_mode: true
+
+parent:
+  name: Parent
+  phone: "+15550100000"
+  email: parent@example.com
+
+calendar:
+  # Every calendar listed here is read for events and chores.
+  ids:
+    - primary
+  everyone_tags: ["[All]", "Family"]
+  # Chores live on the calendar: an event titled "Chore: <Kid> - <task>"
+  # (or "Chore: [All] - <task>") reminds that kid at the event's start time.
+  chore_prefix: "Chore:"
+
+morning_digest:
+  time: "07:00"
+  days: [mon, tue, wed, thu, fri]
+
+quiet_hours:
+  start: "21:00"
+  end: "07:00"
+
+daily_message_cap: 40
+
+kids:
+  - name: Kid A
+    age: null          # not given yet; tone defaults to the 9-12 band
+    phone: "+15550100001"
+    channel: imessage
+    homework_help: true
+
+  - name: Kid B
+    age: null          # not given yet; tone defaults to the 9-12 band
+    phone: "+15550100002"
+    channel: imessage
+    homework_help: true
