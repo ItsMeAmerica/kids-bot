@@ -1,0 +1,5 @@
+.git
+.venv
+state/
+config/family.local.yaml
+__pycache__/

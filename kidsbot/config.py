@@ -23,9 +23,13 @@ def default_path() -> Path:
 
 
 def load(path: Path | str | None = None) -> dict:
-    path = path or default_path()
-    with open(path) as f:
-        cfg = yaml.safe_load(f)
+    """Load and check the config. KIDSBOT_CONFIG_YAML (the whole file as text) wins when
+    no path is given, for hosts where setting an environment variable is easier than a file."""
+    if path is None and os.environ.get("KIDSBOT_CONFIG_YAML"):
+        cfg = yaml.safe_load(os.environ["KIDSBOT_CONFIG_YAML"])
+    else:
+        with open(path or default_path()) as f:
+            cfg = yaml.safe_load(f)
     problems = validate(cfg)
     if problems:
         raise ValueError("family.yaml problems:\n- " + "\n- ".join(problems))
