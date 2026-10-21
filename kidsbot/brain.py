@@ -91,3 +91,39 @@ class Brain:
         except json.JSONDecodeError:
             return Decision(FALLBACK)
         return Decision(data["reply"].strip() or FALLBACK, bool(data["alert_parent"]), data.get("alert_reason", ""))
+
+
+class CliBrain:
+    """Same job as Brain, but through the Claude Code app (`claude -p`) on this computer.
+
+    Uses whatever Claude plan Claude Code is signed in with, so no API key or
+    extra bill. Claude Code must be installed and signed in once (`claude`).
+    """
+
+    def __init__(self, run=None, command: str | None = None, model: str | None = None):
+        import subprocess
+
+        self.run = run or subprocess.run
+        self.command = command or os.environ.get("KIDSBOT_CLAUDE", "claude")
+        self.model = model or os.environ.get("KIDSBOT_MODEL")
+
+    def decide(self, kid: dict, history: list[tuple[str, str]], text: str, now_text: str) -> Decision:
+        chat = "\n".join(f"{'Kid' if role == 'user' else 'You'}: {body}" for role, body in history)
+        prompt = (f"Earlier messages:\n{chat}\n\n" if chat else "") + f"New text from the kid:\n{text}\n\nWrite your reply."
+        args = [self.command, "-p", prompt, "--system-prompt", system_prompt(kid, now_text),
+                "--tools", "", "--strict-mcp-config", "--no-session-persistence",
+                "--output-format", "json", "--json-schema", json.dumps(SCHEMA)]
+        if self.model:
+            args += ["--model", self.model]
+        try:
+            out = self.run(args, capture_output=True, text=True, timeout=120)
+            data = json.loads(out.stdout)["structured_output"]
+        except Exception as exc:  # not installed, signed out, timed out, or odd output
+            print(f"claude cli error: {exc!r}")
+            return Decision(FALLBACK)
+        return Decision(data["reply"].strip() or FALLBACK, bool(data["alert_parent"]), data.get("alert_reason", ""))
+
+
+def make_brain():
+    """API key set: call the API. Otherwise: use Claude Code on this computer."""
+    return Brain() if os.environ.get("ANTHROPIC_API_KEY") else CliBrain()

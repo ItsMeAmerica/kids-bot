@@ -12,7 +12,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import config
-from .brain import Brain
+from .brain import make_brain
 from .state import State
 from .webhook import Handler, verify
 
@@ -82,7 +82,7 @@ def main() -> None:
     cfg = config.load()
     state = State(os.environ.get("KIDSBOT_STATE", "state/server.json"))
     texts = InkboxTexts(os.environ.get("INKBOX_HANDLE", "bigbrain"))
-    handler = Handler(cfg, state, texts, Brain())
+    handler = Handler(cfg, state, texts, make_brain())
     port = int(os.environ.get("PORT", "8080"))
     server = make_server(handler, os.environ["INKBOX_SIGNING_KEY"], port)
     print(f"kids-bot listening on :{port}{PATH} ({'test mode' if cfg.get('test_mode') else 'live'})", flush=True)

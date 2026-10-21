@@ -24,11 +24,19 @@ Every routine loads `config/family.yaml` and follows `prompts/kid_persona.md`.
 
 The `kidsbot/` Python package holds the logic that must be exact (who is texting, quiet hours, caps, which chores are due, which calendar events belong to which kid) so it can be tested.
 
-Routines can't check more often than once an hour, so for replies within seconds there is also a small always-on server (see **Instant replies** below). When it's running, it answers texts and the routines only do the morning digest, chore reminders and weekly recap.
+Routines can't check more often than once an hour, so for replies within seconds the bot can also run on your own computer (see **Instant replies** below). While it runs, it answers texts and the routines only need to do the morning digest, chore reminders and weekly recap.
 
 ## Instant replies
 
-`python -m kidsbot.server` listens at `POST /webhooks/inkbox`. Inkbox calls it the moment a kid texts; it checks the signature, applies the same rules (allowlist, pause, daily cap, quiet hours, "done", test mode), asks Claude for a reply using `prompts/kid_persona.md` and the last few messages, and texts back. Safety alerts go to the parent right away, even in quiet hours. Each incoming text is answered once, even if Inkbox retries.
+Routines check at most once an hour. For replies within seconds, run the bot on your own computer:
+
+```
+python -m kidsbot.poll
+```
+
+It checks Inkbox for new texts every 15 seconds, applies the same rules (allowlist, pause, daily cap, quiet hours, "done", test mode), writes the reply with Claude Code using `prompts/kid_persona.md` and the last few messages, and texts back. Safety alerts go to the parent right away, even in quiet hours. Each text is answered once.
+
+It costs nothing extra: no host, and replies use the Claude plan Claude Code is signed in with. It only answers while the computer is on and awake; texts sent while it's off get answered by the hourly routine instead.
 
 Parent texts to the bot:
 
@@ -38,38 +46,28 @@ Parent texts to the bot:
 | `pause <Kid>` / `resume <Kid>` | Stop or restart replies to a kid |
 | `status` | Replies sent today per kid, and test or live mode |
 
-### Setup
+### Setup on your computer
 
-You need:
-
-- An **Anthropic API key** from https://console.anthropic.com (pay as you go).
-- An **Inkbox API key** from the Inkbox console.
-- A **host** that runs a Docker container all the time with an `https://` address, for example Render, Railway or Fly.io. The `Dockerfile` here works on any of them.
-
-Steps:
-
-1. Deploy this repo to the host and set these environment variables (in the host's settings, never in the repo):
-
-   | Variable | Value |
-   | --- | --- |
-   | `ANTHROPIC_API_KEY` | your Anthropic key |
-   | `INKBOX_API_KEY` | your Inkbox key |
-   | `INKBOX_SIGNING_KEY` | from step 2 |
-   | `KIDSBOT_CONFIG_YAML` | the full text of your real `family.local.yaml` |
-   | `INKBOX_HANDLE` | optional, defaults to `bigbrain` |
-   | `KIDSBOT_MODEL` | optional, defaults to `claude-opus-5-5`; `claude-haiku-5-5` is cheaper |
-
-2. Register the webhook once, from any computer with this repo:
+1. Install [Python 3.11+](https://www.python.org/downloads/) and [Claude Code](https://claude.com/claude-code). Run `claude` once and sign in.
+2. Download this repo, then in its folder: `pip install -r requirements.txt`
+3. Put your real settings in `config/family.local.yaml` (git-ignored; copy `config/family.yaml` and fill it in).
+4. Get your Inkbox API key from the Inkbox console and start the bot:
 
    ```
-   pip install -r requirements.txt
-   INKBOX_API_KEY=... python scripts/register_webhook.py https://<your-host-address>
+   export INKBOX_API_KEY=your-key
+   caffeinate -i python -m kidsbot.poll     # Mac: keeps it awake while running
    ```
 
-   It prints the signing key once. Put it in `INKBOX_SIGNING_KEY` on the host and restart.
-3. Text `status` to the bot. A reply means it's working. Then turn off the "answer texts" part of the hourly routine so kids don't get two answers.
+   On Windows use `set INKBOX_API_KEY=your-key` and `python -m kidsbot.poll`.
+5. Text `status` to the bot. A reply means it's working. The hourly routine skips texts the bot already answered, so both can run.
 
-The server keeps a small file at `state/server.json` (who is paused, today's counts). If the host wipes it on restart, counts start over and paused kids need pausing again.
+Optional settings: `INKBOX_HANDLE` (default `bigbrain`), `KIDSBOT_POLL_SECONDS` (default 15), `KIDSBOT_MODEL` (default: Claude Code's). If `ANTHROPIC_API_KEY` is set, replies use the pay-as-you-go API instead of Claude Code.
+
+The bot keeps a small file at `state/server.json` (where it left off, who is paused, today's counts).
+
+### Optional: always-on host
+
+To answer even when your computer is off, `python -m kidsbot.server` (or the `Dockerfile`) runs the same bot as a webhook at `POST /webhooks/inkbox` on a host such as Render or Railway. That costs a monthly fee and needs `ANTHROPIC_API_KEY`, `INKBOX_API_KEY`, `KIDSBOT_CONFIG_YAML` (the text of your real config) and `INKBOX_SIGNING_KEY`, which `INKBOX_API_KEY=... python scripts/register_webhook.py https://<host>` prints once.
 
 ## Setup
 
@@ -86,7 +84,7 @@ The server keeps a small file at `state/server.json` (who is paused, today's cou
 ```
 config/family.yaml      family settings (placeholders until filled in)
 prompts/                routine and persona prompts
-kidsbot/                config loading, rules, and the instant-replies server
+kidsbot/                config loading, rules, and instant replies (poll.py local, server.py hosted)
 scripts/                one-time webhook registration
 tests/
 ```

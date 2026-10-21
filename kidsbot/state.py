@@ -20,7 +20,7 @@ class State:
         if self.path and self.path.exists():
             self.data.update(json.loads(self.path.read_text()))
 
-    def _save(self) -> None:
+    def save(self) -> None:
         if not self.path:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -34,7 +34,7 @@ class State:
             if key in self.data["seen"]:
                 return False
             self.data["seen"] = (self.data["seen"] + [key])[-MAX_SEEN:]
-            self._save()
+            self.save()
             return True
 
     def sent_today(self, kid: str, day: str) -> int:
@@ -46,7 +46,7 @@ class State:
             today = self.data["sent"].get(day, {})
             today[kid] = today.get(kid, 0) + 1
             self.data["sent"] = {day: today}
-            self._save()
+            self.save()
 
     def cap_noted(self, kid: str, day: str) -> bool:
         """True if the over-cap note already went out today; marks it sent."""
@@ -54,7 +54,7 @@ class State:
             if self.data["cap_noted"].get(kid) == day:
                 return True
             self.data["cap_noted"][kid] = day
-            self._save()
+            self.save()
             return False
 
     def is_paused(self, kid: str) -> bool:
@@ -64,7 +64,7 @@ class State:
         with self._lock:
             names = [k for k in self.data["paused"] if k != kid]
             self.data["paused"] = names + [kid] if paused else names
-            self._save()
+            self.save()
 
     def warn_unknown_once(self, phone: str) -> bool:
         """True the first time an unknown number texts."""
@@ -72,10 +72,10 @@ class State:
             if phone in self.data["warned_unknown"]:
                 return False
             self.data["warned_unknown"].append(phone)
-            self._save()
+            self.save()
             return True
 
     def log_done(self, kid: str, when: str, text: str) -> None:
         with self._lock:
             self.data["done"] = (self.data["done"] + [{"kid": kid, "at": when, "text": text}])[-200:]
-            self._save()
+            self.save()
