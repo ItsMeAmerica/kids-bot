@@ -1,0 +1,17 @@
+# Always-on kids-bot for a home server. Setup: README "Instant replies".
+services:
+  kidsbot:
+    build: .
+    restart: unless-stopped
+    env_file: .env                 # API keys; git-ignored, see .env.example
+    environment:
+      KIDSBOT_CONFIG: /app/config/family.local.yaml
+      KIDSBOT_STATE: /app/state/server.json
+      KIDSBOT_TUNNEL: "1"          # Inkbox tunnel: no router or port changes needed
+      KIDSBOT_TUNNEL_STATE: /app/state/tunnel
+      TZ: America/Denver
+    volumes:
+      - ./config/family.local.yaml:/app/config/family.local.yaml:ro   # real family settings, never committed
+      - ./state:/app/state
+    ports:
+      - "127.0.0.1:8080:8080"      # health check from the server itself: curl localhost:8080

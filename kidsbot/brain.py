@@ -9,7 +9,9 @@ from pathlib import Path
 from . import rules
 
 PERSONA = Path(__file__).resolve().parent.parent / "prompts" / "kid_persona.md"
-DEFAULT_MODEL = "claude-opus-5-5"
+# Haiku answers a short text in a second or two; set KIDSBOT_MODEL=claude-sonnet-5-5
+# (or claude-opus-5-5) for more careful but slower replies.
+DEFAULT_MODEL = "claude-haiku-5-5"
 
 SCHEMA = {
     "type": "object",

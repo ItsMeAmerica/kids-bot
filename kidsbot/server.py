@@ -1,7 +1,9 @@
 """Always-on webhook server: Inkbox calls it the moment a text arrives.
 
-Run with `python -m kidsbot.server`. Settings come from environment variables;
-see README "Instant replies".
+Run with `python -m kidsbot.server` (or `docker compose up -d`). Settings come
+from environment variables; see README "Instant replies". With KIDSBOT_TUNNEL=1
+it also opens the Inkbox tunnel, so a home computer can receive webhooks without
+a public IP or port forwarding.
 """
 from __future__ import annotations
 
@@ -86,7 +88,27 @@ def main() -> None:
     port = int(os.environ.get("PORT", "8080"))
     server = make_server(handler, os.environ["INKBOX_SIGNING_KEY"], port)
     print(f"kids-bot listening on :{port}{PATH} ({'test mode' if cfg.get('test_mode') else 'live'})", flush=True)
-    server.serve_forever()
+    if os.environ.get("KIDSBOT_TUNNEL", "").lower() in ("1", "true", "yes"):
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        run_tunnel(port)
+    else:
+        server.serve_forever()
+
+
+def run_tunnel(port: int) -> None:
+    """Open the Inkbox identity's tunnel so Inkbox can reach this computer from the
+    internet with no port forwarding or router changes. Blocks until stopped."""
+    from inkbox import Inkbox
+
+    inkbox = Inkbox(api_key=os.environ["INKBOX_API_KEY"])
+    listener = inkbox.tunnels.connect(
+        name=os.environ.get("INKBOX_HANDLE", "bigbrain"),
+        forward_to=f"http://127.0.0.1:{port}",
+        state_dir=os.environ.get("KIDSBOT_TUNNEL_STATE", "state/tunnel"),
+        on_status=lambda s: print(f"inkbox tunnel: {s}", flush=True),
+    )
+    print(f"public address: {listener.public_url}{PATH}", flush=True)
+    listener.wait()
 
 
 if __name__ == "__main__":
