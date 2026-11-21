@@ -65,3 +65,8 @@ def test_test_mode_reroutes_to_parent():
     assert rules.recipient(CFG, KID_B) == ("+15550100000", "[Test for Kid B] ")
     live = {**CFG, "test_mode": False}
     assert rules.recipient(live, KID_B) == ("+15550100002", "")
+
+
+def test_config_from_env_text(monkeypatch):
+    monkeypatch.setenv("KIDSBOT_CONFIG_YAML", config.EXAMPLE_PATH.read_text())
+    assert config.load()["kids"][0]["name"] == "Kid A"
